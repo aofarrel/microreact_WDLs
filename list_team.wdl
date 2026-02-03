@@ -57,6 +57,8 @@ task mr_list_team_members {
 			if ~{max_python_retries} - retries == 1:
 				print("WAITING ONE MINUTE, THEN RETRYING...")
 				time.sleep(60)
+			elif ~{max_python_retries} - retries <= 0:
+				return
 			else:
 				print("WAITING TWO SECONDS, THEN RETRYING...")
 				time.sleep(2)
