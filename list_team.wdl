@@ -55,6 +55,14 @@ task mr_list_team_members {
 			print(f"[DEBUG] Response headers: {dict(response.headers)}")
 			return
 
+		def wait(retries):
+			if ~{max_python_retries} - retries == 1:
+				print("WAITING ONE MINUTE, THEN RETRYING...")
+				time.sleep(60)
+			else:
+				print("WAITING TWO SECONDS, THEN RETRYING...")
+				time.sleep(2)
+
 		def list_mr_team_members(token, payload, retries=-1):
 			if retries < ~{max_python_retries}:
 				try:
@@ -66,20 +74,13 @@ task mr_list_team_members {
 						debug_print(response)
 					if response.status_code == 200:
 						users = response.json()
-						print(users)
 						return users
 					print(f"Failed to list members of ~{team_uri} [code {response.status_code}]: {response.text}")
-					print("WAITING TWO SECONDS, THEN RETRYING...")
-					time.sleep(2)
+					wait(retries)
 					list_mr_team_members(token, payload, retries)
 				except Exception as e: # ignore: broad-exception-caught
 					print(f"Caught exception trying to list members of team ~{team_uri}: {e}")
-					if retries != 2:
-						print("WAITING TWO SECONDS, THEN RETRYING...")
-						time.sleep(2)
-					else:
-						print("WAITING ONE MINUTE, THEN RETRYING...")
-						time.sleep(60)
+					wait(retries)
 					list_mr_team_members(token, payload, retries)
 			else:
 				print(f"Failed to list members of team ~{team_uri} after ~{max_python_retries} retries. Something's broken.")
