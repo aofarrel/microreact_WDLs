@@ -4,26 +4,32 @@ workflow Microreact_List_Team {
 	input {
 		File token
 		String team_uri
-		Boolean verbose = false
+		Boolean verbose        = true
+		Int max_python_retries = 0
+		Int max_wdl_retries    = 0
 	}
 
-	call mr_new_team {
+	call mr_list_team_members {
 		input:
 			token = token,
 			team_uri = team_uri,
-			verbose = verbose
+			verbose = verbose,
+			max_python_retries = max_python_retries,
+			max_wdl_retries = max_wdl_retries
 	}
 
 	output {
-		String new_team_uri = mr_new_team.new_team_uri
+		String members = mr_list_team_members.members
 	}
 }
 
-task mr_new_team {
+task mr_list_team_members {
 	input {
 		File token
 		String team_uri
 		Boolean verbose
+		Int max_python_retries
+		Int max_wdl_retries
 	}
 	
 	command <<<
@@ -33,6 +39,10 @@ task mr_new_team {
 		import requests
 		import time
 		import json
+
+		# https://github.com/openwdl/wdl/blob/legacy/versions/1.0/SPEC.md#true-and-false
+		verbose = bool(~{true='True' false='False' verbose})
+		assert type(verbose) == bool
 
 		with open("~{token}", 'r', encoding="utf-8") as file:
 			TOKEN_STR = file.readline().strip()
@@ -45,9 +55,8 @@ task mr_new_team {
 			print(f"[DEBUG] Response headers: {dict(response.headers)}")
 			return
 
-		def list_mr_team_members(token, payload, retries=-1): # returns new URL
-			retries += 1
-			if retries < 3:
+		def list_mr_team_members(token, payload, retries=-1):
+			if retries < ~{max_python_retries}:
 				try:
 					response = requests.post("https://microreact.org/api/teams/list-members",
 						headers={"Access-Token": token, "Content-Type": "application/json; charset=UTF-8"},
@@ -73,14 +82,15 @@ task mr_new_team {
 						time.sleep(60)
 					list_mr_team_members(token, payload, retries)
 			else:
-				print(f"Failed to list members of team ~{team_uri} after multiple retries. Something's broken.")
+				print(f"Failed to list members of team ~{team_uri} after ~{max_python_retries} retries. Something's broken.")
 				exit(1)
+			retries += 1
 			return None
 
 		members = list_mr_team_members(TOKEN_STR, payload)
 
 		with open("members.txt", "w", encoding="utf-8") as outfile:
-			outfile.write(members)
+			outfile.writelines(members)
 
 		CODE
 
@@ -92,10 +102,10 @@ task mr_new_team {
 		docker: "ashedpotatoes/dropkick:0.0.2"
 		memory: "8 GB"
 		preemptible: 2
-		maxRetries: 1
+		maxRetries: max_wdl_retries
 	}
 
 	output {
-		String new_team_uri = read_string("members.txt")
+		Array[String] members = read_lines("members.txt")
 	}
 }
