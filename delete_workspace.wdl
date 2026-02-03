@@ -38,7 +38,7 @@ task mr_delete {
 					print(f"[DEBUG] URL: https://microreact.org/api/projects/bin/")
 					print(f"[DEBUG] Project ID: {mr_url}")
 					
-					update_resp = requests.post(
+					response = requests.post(
 						"https://microreact.org/api/projects/bin/",
 						headers={"Access-Token": token, "Content-Type": "application/json; charset=UTF-8"},
 						params={"project": mr_url},
@@ -46,16 +46,16 @@ task mr_delete {
 					)
 					
 					# Response info
-					print(f"[DEBUG] Status code: {update_resp.status_code}")
-					print(f"[DEBUG] Response body: {update_resp.text!r}")
-					print(f"[DEBUG] Response headers: {dict(update_resp.headers)}")
+					print(f"[DEBUG] Status code: {response.status_code}")
+					print(f"[DEBUG] Response body: {response.text!r}")
+					print(f"[DEBUG] Response headers: {dict(response.headers)}")
 					print()
 					
-					if update_resp.status_code == 200:
+					if response.status_code == 200:
 						print(f"Deleted {mr_url}")
 						return
 					else:
-						print(f"Failed to delete MR project {mr_url} [code {update_resp.status_code}]: {update_resp.text}")
+						print(f"Failed to delete MR project {mr_url} [code {response.status_code}]: {response.text}")
 						delete_mr_project(token, mr_url, retries)
 				except Exception as e:
 					print(f"Caught exception trying to delete MR project {mr_url}: {e}")

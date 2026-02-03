@@ -1,6 +1,6 @@
 version 1.0
 
-workflow Microreact_Create {
+workflow Microreact_Create_Workspace {
 	input {
 		File token
 		File mr_template_json
@@ -40,15 +40,15 @@ task mr_delete {
 				try:
 					with open("~{mr_template_json}", "r", encoding="utf-8") as temp_proj_json:
 						mr_document = json.load(temp_proj_json)
-					update_resp = requests.post("https://microreact.org/api/projects/create",
+					response = requests.post("https://microreact.org/api/projects/create",
 						headers={"Access-Token": token, "Content-Type": "application/json; charset=UTF-8"},
 						params={"access": "private"},
 						timeout=120,
 						json=mr_document)
-					if update_resp.status_code == 200:
-						URL = update_resp.json()['id']
+					if response.status_code == 200:
+						URL = response.json()['id']
 						return URL
-					print(f"Failed to create new MR project [code {update_resp.status_code}]: {update_resp.text}")
+					print(f"Failed to create new MR project [code {response.status_code}]: {response.text}")
 					print("WAITING TWO SECONDS, THEN RETRYING...")
 					time.sleep(2)
 					create_new_mr_project(token, retries)
@@ -66,7 +66,7 @@ task mr_delete {
 				exit(1)
 			return None
 
-		uri = create_new_mr_project(TOKEN_STR, retries=1) # don't keep trying
+		uri = create_new_mr_project(TOKEN_STR) # don't keep trying
 
 		with open("uri.txt", "w", encoding="utf-8") as outfile:
 			outfile.write(uri)
