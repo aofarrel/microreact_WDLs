@@ -76,16 +76,17 @@ task mr_new_team {
 						URL = response.json()['id']
 						return URL
 					print(f"Failed to create new MR team [code {response.status_code}]: {response.text}")
+					retries =+ 1
 					wait(retries)
 					create_new_mr_team(token, payload, retries)
 				except Exception as e: # ignore: broad-exception-caught
 					print(f"Caught exception trying to create new MR team: {e}")
+					retries =+ 1
 					wait(retries)
 					create_new_mr_team(token, payload, retries)
 			else:
 				print(f"Failed to create new MR team after ~{max_python_retries} retries. Something's broken.")
 				exit(1)
-			retries += 1
 
 		uri = create_new_mr_team(TOKEN_STR, payload)
 		with open("uri.txt", "w", encoding="utf-8") as outfile:

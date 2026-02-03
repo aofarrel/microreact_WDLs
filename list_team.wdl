@@ -76,16 +76,17 @@ task mr_list_team_members {
 						users = response.json()
 						return users
 					print(f"Failed to list members of ~{team_uri} [code {response.status_code}]: {response.text}")
+					retries =+ 1
 					wait(retries)
 					list_mr_team_members(token, payload, retries)
 				except Exception as e: # ignore: broad-exception-caught
 					print(f"Caught exception trying to list members of team ~{team_uri}: {e}")
+					retries =+ 1
 					wait(retries)
 					list_mr_team_members(token, payload, retries)
 			else:
 				print(f"Failed to list members of team ~{team_uri} after ~{max_python_retries} retries. Something's broken.")
 				exit(1)
-			retries += 1
 
 		members = list_mr_team_members(TOKEN_STR, payload)
 		with open("members.txt", "w", encoding="utf-8") as outfile:

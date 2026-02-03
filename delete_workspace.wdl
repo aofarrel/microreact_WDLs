@@ -70,16 +70,17 @@ task mr_delete {
 						print(f"Deleted {mr_url}")
 						return
 					print(f"Failed to delete MR project {mr_url} [code {response.status_code}]: {response.text}")
+					retries =+ 1
 					wait(retries)
 					delete_mr_project(token, mr_url, retries)
 				except Exception as e:
 					print(f"Caught exception trying to delete MR project {mr_url}: {e}")
+					retries =+ 1
 					wait(retries)
 					delete_mr_project(token, mr_url, retries)
 			else:
 				print(f"Failed to delete MR project {mr_url} after ~{max_python_retries} retries. Something's broken.")
 				exit(1)
-			retries += 1
 		
 		delete_mr_project(TOKEN_STR, "~{workspace_uri}")
 
