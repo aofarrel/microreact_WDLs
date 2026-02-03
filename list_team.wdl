@@ -5,7 +5,7 @@ workflow Microreact_List_Team {
 		File token
 		String team_uri
 		Boolean verbose        = true
-		Int max_python_retries = 0
+		Int max_python_retries = 1
 		Int max_wdl_retries    = 0
 	}
 
@@ -19,7 +19,7 @@ workflow Microreact_List_Team {
 	}
 
 	output {
-		String members = mr_list_team_members.members
+		Array[String] members = mr_list_team_members.members
 	}
 }
 
@@ -47,8 +47,6 @@ task mr_list_team_members {
 		with open("~{token}", 'r', encoding="utf-8") as file:
 			TOKEN_STR = file.readline().strip()
 
-		payload = '{\n  "team": "~{team_uri}"\n}'
-
 		def debug_print(response):
 			print(f"[DEBUG] Status code: {response.status_code}")
 			print(f"[DEBUG] Response body: {response.text!r}")
@@ -63,6 +61,8 @@ task mr_list_team_members {
 				print("WAITING TWO SECONDS, THEN RETRYING...")
 				time.sleep(2)
 
+		payload = '{\n  "team": "~{team_uri}"\n}'
+		
 		def list_mr_team_members(token, payload, retries=-1):
 			if retries < ~{max_python_retries}:
 				try:
@@ -86,10 +86,8 @@ task mr_list_team_members {
 				print(f"Failed to list members of team ~{team_uri} after ~{max_python_retries} retries. Something's broken.")
 				exit(1)
 			retries += 1
-			return None
 
 		members = list_mr_team_members(TOKEN_STR, payload)
-
 		with open("members.txt", "w", encoding="utf-8") as outfile:
 			outfile.writelines(members)
 

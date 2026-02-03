@@ -4,23 +4,32 @@ workflow Microreact_Create_Workspace {
 	input {
 		File token
 		File mr_template_json
+		Boolean verbose        = true
+		Int max_python_retries = 0
+		Int max_wdl_retries    = 0
 	}
 
-	call mr_delete {
+	call mr_create {
 		input:
 			token = token,
-			mr_template_json = mr_template_json
+			mr_template_json = mr_template_json,
+			verbose = verbose,
+			max_python_retries = max_python_retries,
+			max_wdl_retries = max_wdl_retries
 	}
 
 	output {
-		String new_workspace_uri = mr_delete.new_workspace_uri
+		String new_workspace_uri = mr_create.new_workspace_uri
 	}
 }
 
-task mr_delete {
+task mr_create {
 	input {
 		File token
 		File mr_template_json
+		Boolean verbose
+		Int max_python_retries
+		Int max_wdl_retries
 	}
 	
 	command <<<
@@ -31,43 +40,56 @@ task mr_delete {
 		import time
 		import json
 
+		# https://github.com/openwdl/wdl/blob/legacy/versions/1.0/SPEC.md#true-and-false
+		verbose = bool(~{true='True' false='False' verbose})
+		assert type(verbose) == bool
+
 		with open("~{token}", 'r', encoding="utf-8") as file:
 			TOKEN_STR = file.readline().strip()
 
-		def create_new_mr_project(token, retries=-1): # returns new URL
-			retries += 1
-			if retries < 3:
+		def debug_print(response):
+			print(f"[DEBUG] Status code: {response.status_code}")
+			print(f"[DEBUG] Response body: {response.text!r}")
+			print(f"[DEBUG] Response headers: {dict(response.headers)}")
+			return
+
+		def wait(retries):
+			if ~{max_python_retries} - retries == 1:
+				print("WAITING ONE MINUTE, THEN RETRYING...")
+				time.sleep(60)
+			else:
+				print("WAITING TWO SECONDS, THEN RETRYING...")
+				time.sleep(2)
+
+		with open("~{mr_template_json}", "r", encoding="utf-8") as temp_proj_json:
+			payload = json.load(temp_proj_json)
+
+		def create_new_mr_project(token, payload, retries=-1): # returns new URL
+			if retries < ~{max_python_retries}:
 				try:
-					with open("~{mr_template_json}", "r", encoding="utf-8") as temp_proj_json:
-						mr_document = json.load(temp_proj_json)
 					response = requests.post("https://microreact.org/api/projects/create",
 						headers={"Access-Token": token, "Content-Type": "application/json; charset=UTF-8"},
 						params={"access": "private"},
 						timeout=120,
-						json=mr_document)
+						json=payload)
+					if verbose:
+						debug_print(response)
 					if response.status_code == 200:
 						URL = response.json()['id']
 						return URL
 					print(f"Failed to create new MR project [code {response.status_code}]: {response.text}")
-					print("WAITING TWO SECONDS, THEN RETRYING...")
-					time.sleep(2)
-					create_new_mr_project(token, retries)
+					wait(retries)
+					create_new_mr_project(token, payload, retries)
 				except Exception as e: # ignore: broad-exception-caught
 					print(f"Caught exception trying to create new MR project: {e}")
-					if retries != 2:
-						print("WAITING TWO SECONDS, THEN RETRYING...")
-						time.sleep(2)
-					else:
-						print("WAITING ONE MINUTE, THEN RETRYING...")
-						time.sleep(60)
-					create_new_mr_project(token, retries)
+					wait(retries)
+					create_new_mr_project(token, payload, retries)
 			else:
-				print(f"Failed to create blank MR project after multiple retries. Something's broken.")
+				print(f"Failed to create MR project after ~{max_python_retries} retries. Something's broken.")
 				exit(1)
-			return None
+			retries += 1
 
-		uri = create_new_mr_project(TOKEN_STR) # don't keep trying
-
+		uri = create_new_mr_project(TOKEN_STR, payload)
 		with open("uri.txt", "w", encoding="utf-8") as outfile:
 			outfile.write(uri)
 
@@ -81,7 +103,7 @@ task mr_delete {
 		docker: "ashedpotatoes/dropkick:0.0.2"
 		memory: "8 GB"
 		preemptible: 2
-		maxRetries: 1
+		maxRetries: max_wdl_retries
 	}
 
 	output {

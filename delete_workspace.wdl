@@ -4,12 +4,18 @@ workflow Microreact_Delete {
 	input {
 		File token
 		String workspace_uri
+		Boolean verbose        = true
+		Int max_python_retries = 0
+		Int max_wdl_retries    = 0
 	}
 
 	call mr_delete {
 		input:
 			token = token,
-			workspace_uri = workspace_uri
+			workspace_uri = workspace_uri,
+			verbose = verbose,
+			max_python_retries = max_python_retries,
+			max_wdl_retries = max_wdl_retries
 	}
 }
 
@@ -17,6 +23,9 @@ task mr_delete {
 	input {
 		File token
 		String workspace_uri
+		Boolean verbose
+		Int max_python_retries
+		Int max_wdl_retries
 	}
 	
 	command <<<
@@ -25,50 +34,53 @@ task mr_delete {
 		python3 << CODE
 		import requests
 		import time
+		import json
+
+		# https://github.com/openwdl/wdl/blob/legacy/versions/1.0/SPEC.md#true-and-false
+		verbose = bool(~{true='True' false='False' verbose})
+		assert type(verbose) == bool
 
 		with open("~{token}", 'r', encoding="utf-8") as file:
 			TOKEN_STR = file.readline().strip()
 
+		def debug_print(response):
+			print(f"[DEBUG] Status code: {response.status_code}")
+			print(f"[DEBUG] Response body: {response.text!r}")
+			print(f"[DEBUG] Response headers: {dict(response.headers)}")
+			return
+
+		def wait(retries):
+			if ~{max_python_retries} - retries == 1:
+				print("WAITING ONE MINUTE, THEN RETRYING...")
+				time.sleep(60)
+			else:
+				print("WAITING TWO SECONDS, THEN RETRYING...")
+				time.sleep(2)
+
 		def delete_mr_project(token, mr_url, retries=-1):
-			retries += 1
-			if retries < 3:
+			if retries < ~{max_python_retries}:
 				try:
-					# Request info
-					print(f"[DEBUG] Attempt {retries + 1}")
-					print(f"[DEBUG] URL: https://microreact.org/api/projects/bin/")
-					print(f"[DEBUG] Project ID: {mr_url}")
-					
-					response = requests.post(
-						"https://microreact.org/api/projects/bin/",
+					response = requests.post("https://microreact.org/api/projects/bin/",
 						headers={"Access-Token": token, "Content-Type": "application/json; charset=UTF-8"},
-						params={"project": mr_url},
-						timeout=10
-					)
-					
-					# Response info
-					print(f"[DEBUG] Status code: {response.status_code}")
-					print(f"[DEBUG] Response body: {response.text!r}")
-					print(f"[DEBUG] Response headers: {dict(response.headers)}")
-					print()
-					
+						timeout=120,
+						params={"project": mr_url})
+					if verbose:
+						debug_print(response)
 					if response.status_code == 200:
 						print(f"Deleted {mr_url}")
 						return
-					else:
-						print(f"Failed to delete MR project {mr_url} [code {response.status_code}]: {response.text}")
-						delete_mr_project(token, mr_url, retries)
+					print(f"Failed to delete MR project {mr_url} [code {response.status_code}]: {response.text}")
+					wait(retries)
+					delete_mr_project(token, mr_url, retries)
 				except Exception as e:
 					print(f"Caught exception trying to delete MR project {mr_url}: {e}")
-					if retries != 2:
-						time.sleep(2)
-					else:
-						print("SLEEPING FOR A MINUTE...")
-						time.sleep(60)
+					wait(retries)
 					delete_mr_project(token, mr_url, retries)
 			else:
-				print(f"Failed to delete MR project {mr_url} after multiple retries. Something's broken.")
+				print(f"Failed to delete MR project {mr_url} after ~{max_python_retries} retries. Something's broken.")
 				exit(1)
-
+			retries += 1
+		
 		delete_mr_project(TOKEN_STR, "~{workspace_uri}")
 
 		CODE
@@ -81,6 +93,6 @@ task mr_delete {
 		docker: "ashedpotatoes/dropkick:0.0.2"
 		memory: "8 GB"
 		preemptible: 2
-		maxRetries: 1
+		maxRetries: max_wdl_retries
 	}
 }
