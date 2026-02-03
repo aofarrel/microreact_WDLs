@@ -70,7 +70,7 @@ task mr_list_team_members {
 			"emails": emails,
 		}
 		payload = json.dumps(ugh)
-		print(payload)
+		if verbose: print(payload)
 		
 		def add_teammates(token, payload, retries=-1):
 			if retries < ~{max_python_retries}:
