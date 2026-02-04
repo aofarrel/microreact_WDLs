@@ -19,7 +19,8 @@ workflow Microreact_List_Team {
 	}
 
 	output {
-		Array[String] members = mr_list_team_members.members
+		Array[String] emails = mr_list_team_members.emails
+		File emails_roles_datestamp = mr_list_team_members.emails_roles_datestamp
 	}
 }
 
@@ -90,9 +91,18 @@ task mr_list_team_members {
 				print(f"Failed to list members of team ~{team_uri} after ~{max_python_retries} retries. Something's broken.")
 				exit(1)
 
-		members = list_mr_team_members(TOKEN_STR, payload)
-		with open("members.txt", "w", encoding="utf-8") as outfile:
-			outfile.writelines(members)
+		# response is a list of dictionaries, ex: '[{"email":"foo@bar.edu","role":"viewer","added":"2026-02-03T23:01:51.691Z"}]'
+		# list-of-dict isn't valid for writelines() so we'll use JSON
+		full_output = list_mr_team_members(TOKEN_STR, payload)
+		with open("teammates_full_details.json", "w", encoding="utf-8") as outfile:
+			json.dump(full_output, outfile)
+
+		emails = []
+		for teammate in full_output:
+			emails.append(teammate['email'])
+
+		with open("emails.txt", "w", encoding="utf-8") as outfile:
+			outfile.writelines(emails)
 
 		CODE
 
@@ -108,6 +118,7 @@ task mr_list_team_members {
 	}
 
 	output {
-		Array[String] members = read_lines("members.txt")
+		Array[String] emails = read_lines("emails.txt")
+		File emails_roles_datestamp = "teammates_full_details.json"
 	}
 }
