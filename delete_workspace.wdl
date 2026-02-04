@@ -3,7 +3,7 @@ version 1.0
 workflow Microreact_Delete {
 	input {
 		File token
-		String workspace_uri
+		String workspace_uri_to_delete
 		Boolean verbose        = true
 		Int max_python_retries = 0
 		Int max_wdl_retries    = 0
@@ -12,7 +12,7 @@ workflow Microreact_Delete {
 	call mr_delete {
 		input:
 			token = token,
-			workspace_uri = workspace_uri,
+			workspace_uri = workspace_uri_to_delete,
 			verbose = verbose,
 			max_python_retries = max_python_retries,
 			max_wdl_retries = max_wdl_retries
