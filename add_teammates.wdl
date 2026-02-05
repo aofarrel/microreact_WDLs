@@ -10,7 +10,7 @@ workflow Microreact_Add_Teammates {
 		Int max_wdl_retries    = 0
 	}
 
-	call mr_list_team_members {
+	call mr_add_teammate {
 		input:
 			token = token,
 			team_uri = team_uri,
@@ -22,7 +22,7 @@ workflow Microreact_Add_Teammates {
 
 }
 
-task mr_list_team_members {
+task mr_add_teammate {
 	input {
 		File token
 		String team_uri
@@ -65,11 +65,11 @@ task mr_list_team_members {
 
 		# this seems to be the most consistent way of doing this
 		emails = "~{sep=',' teammate_emails}".split(",")
-		ugh = {
+		payload_dict = {
 			"team": "~{team_uri}",
 			"emails": emails,
 		}
-		payload = json.dumps(ugh)
+		payload = json.dumps(payload_dict)
 		if verbose: print(payload)
 		
 		def add_teammates(token, payload, retries=-1):
