@@ -49,6 +49,10 @@ workflow Microreact_Share_Team_MULTIPLE {
 			max_python_retries = max_python_retries
 	}
 
+	output {
+		# We need this empty bogus output to call this workflow as a subworkflow by Tree Nine
+	}
+
 }
 
 task mr_share_MULTIPLE_with_team {
