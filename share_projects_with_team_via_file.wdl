@@ -4,7 +4,7 @@ version 1.0
 # Only difference is this one takes in a newline delimited file instead of Array[String]
 # because Array[String] delocalization from previous tasks can be unreliable.
 
-workflow Microreact_Share_Team_MULTIPLE_FILE {
+workflow Microreact_Share_Projects_With_Team {
 	input {
 		File token
 		String team_uri

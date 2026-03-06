@@ -1,6 +1,6 @@
 version 1.0
 
-workflow Microreact_Create_Workspace {
+workflow Microreact_Create_Project {
 	input {
 		File token
 		File mr_template_json

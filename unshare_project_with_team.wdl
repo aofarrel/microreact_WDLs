@@ -1,6 +1,6 @@
 version 1.0
 
-workflow Microreact_Unshare_Team {
+workflow Microreact_Unshare_Project_With_Team {
 	input {
 		File token
 		String team_uri

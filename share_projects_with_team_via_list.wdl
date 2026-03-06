@@ -16,7 +16,7 @@ version 1.0
 # project, it will start from the very beginning and attempt to share
 # that which is already shared.
 
-workflow Microreact_Share_Team_MULTIPLE {
+workflow Microreact_Share_Projects_With_Team {
 	input {
 		File token
 		String team_uri
